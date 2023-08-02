@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::time::Instant;
 
 const ADD: u8 = 0x01;
 const SUB: u8 = 0x02;
@@ -156,11 +157,29 @@ impl Program {
 
             let byte = self.code[self.counter as usize];
 
+            // all the jumping code requires a subtraction of 1, because at the
+            // end of the loop there's a `self.step()`, so without it, it ends up
+            // going back to the given address + 1
             match byte {
-                JMP => {}
-                JZ => {}
-                JLZ => {}
-                JMZ => {}
+                JMP => self.counter = self.next_dword() - 1,
+                JZ => {
+                    let address = self.next_dword() - 1;
+                    if self.regs[0] == 0 {
+                        self.counter = address;
+                    }
+                }
+                JLZ => {
+                    let address = self.next_dword() - 1;
+                    if self.regs[0] == 1 {
+                        self.counter = address;
+                    }
+                }
+                JMZ => {
+                    let address = self.next_dword() - 1;
+                    if self.regs[0] == 2 {
+                        self.counter = address;
+                    }
+                }
                 LDP => {}
                 STP => {}
                 AND | NAND | OR | NOR | XOR | XNOR | MOV | ADD | SUB | CMP => {
@@ -185,8 +204,11 @@ impl Program {
 }
 
 fn main() {
-    let thing: Vec<u8> = vec![MOV, RB_MODE, 0, 12, MOV, RB_MODE, 1, 11, CMP, RR_MODE, 1, 0];
-
+    //let thing: Vec<u8> = vec![MOV, RB_MODE, 0, 12, MOV, RB_MODE, 1, 11, CMP, RR_MODE, 1, 0];
+    let thing: Vec<u8> = vec![ADD, RB_MODE, 1, 1, CMP, RW_MODE, 1, 16, 39, JLZ, 0, 0, 0, 0];
+    let start = Instant::now();
     let mut p1 = Program::new(thing);
     p1.execute();
+    let elapsed = start.elapsed();
+    println!("elapsed time to run program: {:?}", elapsed);
 }
